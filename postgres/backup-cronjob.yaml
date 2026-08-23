@@ -1,0 +1,52 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: moodle
+  labels:
+    app: postgres
+    component: backup
+spec:
+  schedule: "0 2 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            capabilities:
+              drop:
+              - ALL
+          containers:
+          - name: backup
+            image: postgres:15
+            command:
+            - /bin/sh
+            - -c
+            - |
+              pg_dump -U moodleuser -d moodle -h postgres | gzip > /backups/moodle-$(date +%Y%m%d-%H%M%S).sql.gz
+              find /backups -type f -name "*.sql.gz" -mtime +7 -delete
+            env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: moodle-secrets
+                  key: db-password
+            volumeMounts:
+            - name: backup-storage
+              mountPath: /backups
+            resources:
+              requests:
+                memory: "128Mi"
+                cpu: "100m"
+              limits:
+                memory: "256Mi"
+                cpu: "200m"
+          restartPolicy: OnFailure
+          volumes:
+          - name: backup-storage
+            persistentVolumeClaim:
+              claimName: postgres-backup-pvc

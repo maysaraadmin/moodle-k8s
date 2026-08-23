@@ -1,0 +1,55 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: moodle-cron
+  namespace: moodle
+spec:
+  schedule: "*/1 * * * *"   # every minute
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 33
+            capabilities:
+              drop:
+              - ALL
+          restartPolicy: OnFailure
+          containers:
+          - name: cron
+            image: moodlehq/moodle-php-apache:8.3-20250331
+            imagePullPolicy: IfNotPresent
+            env:
+            - configMapRef:
+                name: moodle-config
+            - name: MOODLE_DOCKER_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: moodle-secrets
+                  key: db-password
+            - name: MOODLE_DOCKER_ADMIN_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: moodle-secrets
+                  key: admin-password
+            command:
+            - /bin/sh
+            - -c
+            - php /var/www/html/admin/cli/cron.php
+            volumeMounts:
+            - name: moodledata
+              mountPath: /var/www/moodledata
+            resources:
+              requests:
+                memory: "128Mi"
+                cpu: "100m"
+              limits:
+                memory: "256Mi"
+                cpu: "200m"
+          volumes:
+          - name: moodledata
+            persistentVolumeClaim:
+              claimName: moodledata-pvc

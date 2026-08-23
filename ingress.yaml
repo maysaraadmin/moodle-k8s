@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: moodle-ingress
+  namespace: moodle
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  ingressClassName: nginx
+spec:
+  tls:
+  - hosts:
+    - moodle.localdomain
+    secretName: moodle-tls
+  rules:
+  - host: moodle.localdomain   # update to your actual domain
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: moodle
+            port:
+              number: 80

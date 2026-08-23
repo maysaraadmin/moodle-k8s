@@ -1,0 +1,22 @@
+# Secrets — never commit actual values to version control
+secrets.yaml
+*.secret.yaml
+
+# Kubernetes / CI
+*.kubeconfig
+.kube/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Terraform / provisioner state
+*.tfstate
+*.tfstate.backup
+.terraform/

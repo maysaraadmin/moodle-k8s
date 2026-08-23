@@ -1,0 +1,12 @@
+# Moodle data (user files, logs, sessions)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: moodledata-pvc
+  namespace: moodle
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi   # adjust for expected uploads

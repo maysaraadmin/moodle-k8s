@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: moodle
+  namespace: moodle
+spec:
+  replicas: 1   # can scale horizontally only if moodledata is shared on RWX storage
+  selector:
+    matchLabels:
+      app: moodle
+  template:
+    metadata:
+      labels:
+        app: moodle
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+    spec:
+      securityContext:
+        fsGroup: 33
+      containers:
+      - name: moodle
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 33
+          capabilities:
+            drop:
+            - ALL
+        image: moodlehq/moodle-php-apache:8.3-20250331
+        imagePullPolicy: IfNotPresent
+        env:
+        - configMapRef:
+            name: moodle-config
+        - name: MOODLE_DOCKER_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: moodle-secrets
+              key: db-password
+        - name: MOODLE_DOCKER_ADMIN_PASS
+          valueFrom:
+            secretKeyRef:
+              name: moodle-secrets
+              key: admin-password
+        - name: MOODLE_DOCKER_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: moodle-secrets
+              key: moodle-secret-key
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: moodledata
+          mountPath: /var/www/moodledata
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /login/index.php
+            port: 80
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /login/index.php
+            port: 80
+          initialDelaySeconds: 20
+          periodSeconds: 10
+      volumes:
+      - name: moodledata
+        persistentVolumeClaim:
+          claimName: moodledata-pvc

@@ -1,0 +1,21 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: moodle-pdb
+  namespace: moodle
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: moodle
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: postgres-pdb
+  namespace: moodle
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: postgres
