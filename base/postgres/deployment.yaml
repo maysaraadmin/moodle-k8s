@@ -5,6 +5,11 @@ metadata:
   namespace: moodle
 spec:
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: postgres
@@ -16,13 +21,31 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "5432"
     spec:
+      terminationGracePeriodSeconds: 30
       securityContext:
         fsGroup: 999
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app: postgres
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: moodle
+              topologyKey: kubernetes.io/hostname
       containers:
       - name: postgres
         securityContext:
           runAsNonRoot: true
           runAsUser: 999
+          allowPrivilegeEscalation: false
           capabilities:
             drop:
             - ALL

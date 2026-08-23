@@ -6,7 +6,7 @@ metadata:
 data:
   # Database connection (non-secret part)
   MOODLE_DOCKER_DB_TYPE: pgsql
-  MOODLE_DOCKER_DB_HOST: postgres
+  MOODLE_DOCKER_DB_HOST: pgbouncer
   MOODLE_DOCKER_DB_NAME: moodle
   MOODLE_DOCKER_DB_USER: moodleuser
   MOODLE_DOCKER_DB_PORT: "5432"
@@ -14,4 +14,8 @@ data:
   MOODLE_DOCKER_AUTOINSTALL: "0"
   MOODLE_DOCKER_ADMIN_USER: admin
   MOODLE_DOCKER_ADMIN_EMAIL: admin@example.com
+  MOODLE_DOCKER_WWWROOT: "https://moodle.localdomain"
+  MOODLE_DOCKER_REDIS_HOST: redis
+  MOODLE_DOCKER_REDIS_PORT: "6379"
+  MOODLE_DOCKER_REDIS_DB: "0"
   TZ: UTC

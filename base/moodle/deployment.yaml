@@ -5,6 +5,11 @@ metadata:
   namespace: moodle
 spec:
   replicas: 1   # can scale horizontally only if moodledata is shared on RWX storage
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: moodle
@@ -16,21 +21,41 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "80"
     spec:
+      terminationGracePeriodSeconds: 30
       securityContext:
         fsGroup: 33
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app: moodle
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: postgres
+              topologyKey: kubernetes.io/hostname
       containers:
       - name: moodle
         securityContext:
           runAsNonRoot: true
           runAsUser: 33
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
           capabilities:
             drop:
             - ALL
         image: moodlehq/moodle-php-apache:8.3-20250331
         imagePullPolicy: IfNotPresent
-        env:
+        envFrom:
         - configMapRef:
             name: moodle-config
+        env:
         - name: MOODLE_DOCKER_DB_PASSWORD
           valueFrom:
             secretKeyRef:
@@ -46,11 +71,18 @@ spec:
             secretKeyRef:
               name: moodle-secrets
               key: moodle-secret-key
+        - name: MOODLE_DOCKER_REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: moodle-secrets
+              key: redis-password
         ports:
         - containerPort: 80
         volumeMounts:
         - name: moodledata
           mountPath: /var/www/moodledata
+        - name: tmp
+          mountPath: /tmp
         resources:
           requests:
             memory: "512Mi"
@@ -74,3 +106,5 @@ spec:
       - name: moodledata
         persistentVolumeClaim:
           claimName: moodledata-pvc
+      - name: tmp
+        emptyDir: {}

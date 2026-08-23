@@ -1,6 +1,7 @@
 # Secrets — never commit actual values to version control
 secrets.yaml
 *.secret.yaml
+!sealed-secrets.yaml
 
 # Kubernetes / CI
 *.kubeconfig

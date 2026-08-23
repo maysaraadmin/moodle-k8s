@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgbouncer-config
+  namespace: moodle
+data:
+  pgbouncer.ini: |
+    [databases]
+    moodle = host=postgres port=5432 dbname=moodle
+
+    [pgbouncer]
+    listen_port = 5432
+    listen_addr = 0.0.0.0
+    auth_type = md5
+    auth_file = /etc/pgbouncer/userlist.txt
+    logfile = /var/log/pgbouncer/pgbouncer.log
+    pidfile = /var/run/pgbouncer/pgbouncer.pid
+    admin_users = postgres
+    pool_mode = transaction
+    max_client_conn = 1000
+    default_pool_size = 20
+    min_pool_size = 5
+    reserve_pool_size = 5
+    max_db_connections = 50
+    max_user_connections = 50
+    server_idle_timeout = 600
+    server_lifetime = 3600
+    server_connect_timeout = 15
+    query_timeout = 0
+    query_wait_timeout = 120
+    idle_transaction_timeout = 0
+    log_connections = 1
+    log_disconnections = 1
+    log_pooler_errors = 1
+    stats_period = 60
+    verbose = 0

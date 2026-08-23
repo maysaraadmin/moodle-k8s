@@ -1,0 +1,27 @@
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - pvc/moodledata-pvc.yaml
+  - pvc/postgres-pvc.yaml
+  - postgres/deployment.yaml
+  - postgres/service.yaml
+  - postgres/backup-pvc.yaml
+  - postgres/backup-cronjob.yaml
+  - postgres/pgbouncer-configmap.yaml
+  - postgres/pgbouncer-deployment.yaml
+  - postgres/pgbouncer-service.yaml
+  - moodle/deployment.yaml
+  - moodle/service.yaml
+  - redis/configmap.yaml
+  - redis/pvc.yaml
+  - redis/statefulset.yaml
+  - redis/service.yaml
+  - pdb/pdb.yaml
+  - cronjob.yaml
+  - network-policies.yaml
+  - ingress.yaml
+
+labels:
+  - pairs:
+      app.kubernetes.io/managed-by: kustomize
+      app.kubernetes.io/part-of: moodle

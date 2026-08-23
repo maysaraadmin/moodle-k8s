@@ -1,12 +1,12 @@
-# Moodle data (user files, logs, sessions)
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: moodledata-pvc
+  name: postgres-backup-pvc
   namespace: moodle
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: standard   # override via Kustomize to match your cluster
   resources:
     requests:
-      storage: 50Gi   # adjust for expected uploads
+      storage: 10Gi

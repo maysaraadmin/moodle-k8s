@@ -1,10 +1,13 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: moodle-cron
+  name: postgres-backup
   namespace: moodle
+  labels:
+    app: postgres
+    component: backup
 spec:
-  schedule: "*/1 * * * *"   # every minute
+  schedule: "0 2 * * *"
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 1
   jobTemplate:
@@ -13,35 +16,31 @@ spec:
         spec:
           securityContext:
             runAsNonRoot: true
-            runAsUser: 33
+            runAsUser: 999
+            allowPrivilegeEscalation: false
             capabilities:
               drop:
               - ALL
           restartPolicy: OnFailure
           containers:
-          - name: cron
-            image: moodlehq/moodle-php-apache:8.3-20250331
+          - name: backup
+            image: postgres:15
             imagePullPolicy: IfNotPresent
+            command:
+            - /bin/sh
+            - -c
+            - |
+              pg_dump -U moodleuser -d moodle -h postgres | gzip > /backups/moodle-$(date +%Y%m%d-%H%M%S).sql.gz
+              find /backups -type f -name "*.sql.gz" -mtime +7 -delete
             env:
-            - configMapRef:
-                name: moodle-config
-            - name: MOODLE_DOCKER_DB_PASSWORD
+            - name: PGPASSWORD
               valueFrom:
                 secretKeyRef:
                   name: moodle-secrets
                   key: db-password
-            - name: MOODLE_DOCKER_ADMIN_PASS
-              valueFrom:
-                secretKeyRef:
-                  name: moodle-secrets
-                  key: admin-password
-            command:
-            - /bin/sh
-            - -c
-            - php /var/www/html/admin/cli/cron.php
             volumeMounts:
-            - name: moodledata
-              mountPath: /var/www/moodledata
+            - name: backup-storage
+              mountPath: /backups
             resources:
               requests:
                 memory: "128Mi"
@@ -50,6 +49,6 @@ spec:
                 memory: "256Mi"
                 cpu: "200m"
           volumes:
-          - name: moodledata
+          - name: backup-storage
             persistentVolumeClaim:
-              claimName: moodledata-pvc
+              claimName: postgres-backup-pvc

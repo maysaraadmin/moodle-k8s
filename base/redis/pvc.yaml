@@ -1,12 +1,12 @@
-# PostgreSQL data
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: postgres-pvc
+  name: redis-pvc
   namespace: moodle
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: standard   # override via Kustomize to match your cluster
   resources:
     requests:
-      storage: 20Gi   # increased from 10Gi for better capacity
+      storage: 5Gi

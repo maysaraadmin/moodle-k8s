@@ -1,0 +1,40 @@
+resources:
+  - ../../base
+
+namespace: moodle
+
+commonLabels:
+  environment: prod
+
+patches:
+- target:
+    kind: Deployment
+    name: moodle
+  patch: |-
+    - op: replace
+      path: /spec/replicas
+      value: 3
+- target:
+    kind: Deployment
+    name: postgres
+  patch: |-
+    - op: replace
+      path: /spec/replicas
+      value: 2
+- target:
+    kind: StatefulSet
+    name: redis
+  patch: |-
+    - op: replace
+      path: /spec/replicas
+      value: 2
+- target:
+    kind: Ingress
+    name: moodle-ingress
+  patch: |-
+    - op: replace
+      path: /spec/tls/0/hosts/0
+      value: moodle.example.com
+    - op: replace
+      path: /spec/rules/0/host
+      value: moodle.example.com
