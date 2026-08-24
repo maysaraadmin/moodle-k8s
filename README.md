@@ -42,6 +42,22 @@ Production-grade Kubernetes manifests for deploying Moodle LMS on a Kubernetes c
 - `kubectl` with `kustomize` support (built into kubectl 1.14+)
 - `kubeconform` for validation (optional but recommended)
 - `kubeseal` for secret management (optional but recommended)
+- `pre-commit` for local Git hooks (optional but recommended)
+
+## Continuous Integration
+
+This project includes a GitHub Actions workflow (`.github/workflows/validate.yml`) that automatically validates all manifests with `kubeconform` and `kube-score` on every push and pull request to `main`.
+
+## Pre-commit Hooks
+
+Install `pre-commit` and run it before every commit to catch manifest errors early:
+
+```powershell
+pip install pre-commit
+pre-commit install
+```
+
+This will run `kubeconform` on all YAML files before each commit.
 
 ## Quick Start
 
@@ -109,9 +125,25 @@ Visit `https://moodle.localdomain` (update `base/ingress.yaml` with your domain 
 ├── secrets.yaml.example      # Secret template
 ├── sealed-secrets.yaml       # Encrypted secrets for Git (optional)
 ├── make.ps1                  # Deployment script (Windows PowerShell)
+├── .pre-commit-config.yaml   # Pre-commit hooks for validation
 ├── .gitignore
+├── LICENSE
+├── SECURITY.md
+├── CHANGELOG.md
 └── README.md
 ```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run `.\make.ps1 validate` to ensure manifests are valid
+5. Run `pre-commit run --all-files` to run local validation hooks
+6. Commit and push your branch
+7. Open a Pull Request
+
+All PRs are automatically validated by GitHub Actions.
 
 ## Configuration
 
