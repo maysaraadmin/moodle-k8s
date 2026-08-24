@@ -26,6 +26,26 @@ jobs:
           sudo chmod +x /usr/local/bin/kubeconform
           kubeconform --version
 
+      - name: Install kube-score
+        run: |
+          curl -sSL https://github.com/zegl/kube-score/releases/download/v1.18.0/kube-score_1.18.0_linux_amd64.tar.gz -o /tmp/kube-score.tar.gz
+          tar -xzf /tmp/kube-score.tar.gz -C /tmp
+          sudo mv /tmp/kube-score /usr/local/bin/kube-score
+          sudo chmod +x /usr/local/bin/kube-score
+          kube-score version
+
+      - name: Validate base overlay with kube-score
+        run: |
+          kubectl kustomize base | kube-score score -
+
+      - name: Validate dev overlay with kube-score
+        run: |
+          kubectl kustomize overlays/dev | kube-score score -
+
+      - name: Validate prod overlay with kube-score
+        run: |
+          kubectl kustomize overlays/prod | kube-score score -
+
       - name: Validate base overlay
         run: |
           kubectl kustomize base | kubeconform -summary -ignore-missing-schemas -

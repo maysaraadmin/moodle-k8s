@@ -1,0 +1,7 @@
+repos:
+  - repo: https://github.com/yannh/kubeconform
+    rev: v0.6.7
+    hooks:
+      - id: kubeconform
+        files: \.(yaml|yml)$
+        args: ['-summary', '-ignore-missing-schemas']
