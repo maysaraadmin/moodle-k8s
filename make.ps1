@@ -84,14 +84,19 @@ switch ($Command) {
         Write-Host "Waiting for Moodle to be ready..."
         kubectl wait --for=condition=available --timeout=300s deploy/moodle -n $NAMESPACE
         Write-Host "Running smoke test..."
-        kubectl run curl-test --rm -it --restart=Never --image=curlimages/curl:latest -- curl -sf -o /dev/null -w "%{http_code}" https://moodle.localdomain/login/index.php
+        $ingressHost = (kubectl get ingress moodle-ingress -n $NAMESPACE -o jsonpath='{.spec.rules[0].host}' 2>$null)
+        if (-not $ingressHost) {
+            $ingressHost = "moodle.localdomain"
+            Write-Host "Warning: could not detect ingress host, using default: $ingressHost"
+        }
+        kubectl run curl-test --rm -it --restart=Never --image=curlimages/curl:latest -- curl -sf -o /dev/null -w "%{http_code}" "https://$ingressHost/login/index.php"
     }
     "seal" {
         if (-not (Test-Path "secrets.yaml")) {
             Write-Error "Error: secrets.yaml not found. Run .\make.ps1 secrets first."
             exit 1
         }
-        Get-Content "secrets.yaml" | & $KUBESEAL --format yaml | Set-Content "sealed-secrets.yaml"
+        Get-Content "secrets.yaml" -Raw | & $KUBESEAL --format yaml | Set-Content "sealed-secrets.yaml"
         Write-Host "Sealed secrets written to sealed-secrets.yaml"
     }
     "unseal" {

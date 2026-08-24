@@ -79,7 +79,6 @@ Visit `https://moodle.localdomain` (update `base/ingress.yaml` with your domain 
 │   ├── cronjob.yaml
 │   ├── ingress.yaml
 │   ├── network-policies.yaml
-│   ├── secrets.yaml          # Sensitive values (gitignored)
 │   ├── moodle/
 │   │   ├── deployment.yaml
 │   │   └── service.yaml
@@ -106,6 +105,7 @@ Visit `https://moodle.localdomain` (update `base/ingress.yaml` with your domain 
 │   │   └── kustomization.yaml
 │   └── prod/                 # Production environment
 │       └── kustomization.yaml
+├── secrets.yaml              # Sensitive values (gitignored)
 ├── secrets.yaml.example      # Secret template
 ├── sealed-secrets.yaml       # Encrypted secrets for Git (optional)
 ├── make.ps1                  # Deployment script (Windows PowerShell)
