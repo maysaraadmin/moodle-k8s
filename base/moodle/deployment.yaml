@@ -4,7 +4,7 @@ metadata:
   name: moodle
   namespace: moodle
 spec:
-  replicas: 1   # can scale horizontally only if moodledata is shared on RWX storage
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
