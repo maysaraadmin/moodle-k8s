@@ -47,24 +47,18 @@ Production-grade Kubernetes manifests for deploying Moodle LMS on a Kubernetes c
 
 1. Generate secrets:
 
-```bash
-make secrets
+```powershell
+.\make.ps1 secrets
 # Edit secrets.yaml with strong, unique values
 ```
 
 2. Validate manifests:
 
-```bash
-make validate
+```powershell
+.\make.ps1 validate
 ```
 
 3. Deploy:
-
-```bash
-make apply
-```
-
-On Windows PowerShell:
 
 ```powershell
 .\make.ps1 apply
@@ -72,7 +66,7 @@ On Windows PowerShell:
 
 4. Complete Moodle setup:
 
-Visit `https://moodle.localdomain` (update `ingress.yaml` with your domain first). Auto-install is disabled by default; run the Moodle CLI installer manually or set `MOODLE_DOCKER_AUTOINSTALL=1` temporarily.
+Visit `https://moodle.localdomain` (update `base/ingress.yaml` with your domain first). Auto-install is disabled by default; run the Moodle CLI installer manually or set `MOODLE_DOCKER_AUTOINSTALL=1` temporarily.
 
 ## Directory Structure
 
@@ -114,8 +108,7 @@ Visit `https://moodle.localdomain` (update `ingress.yaml` with your domain first
 │       └── kustomization.yaml
 ├── secrets.yaml.example      # Secret template
 ├── sealed-secrets.yaml       # Encrypted secrets for Git (optional)
-├── Makefile                  # Deployment automation (Linux/macOS)
-├── make.ps1                  # Deployment script (Windows)
+├── make.ps1                  # Deployment script (Windows PowerShell)
 ├── .gitignore
 └── README.md
 ```
@@ -162,14 +155,14 @@ This project uses [Kustomize](https://kustomize.io/) (built into `kubectl`) for 
 
 ### Dev Environment
 
-```bash
-make apply-dev
+```powershell
+.\make.ps1 apply-dev
 ```
 
 ### Production Environment
 
-```bash
-make apply-prod
+```powershell
+.\make.ps1 apply-prod
 ```
 
 ### Custom Overlays
@@ -180,8 +173,8 @@ Create a new directory under `overlays/` with a `kustomization.yaml` that refere
 
 ### Option 1: Plaintext (Development Only)
 
-```bash
-make secrets
+```powershell
+.\make.ps1 secrets
 # Edit secrets.yaml with strong values
 ```
 
@@ -193,22 +186,22 @@ make secrets
 
 1. Install the Sealed Secrets controller in your cluster:
 
-```bash
+```powershell
 kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.24.0/controller.yaml
 ```
 
 2. Seal your secrets:
 
-```bash
-make seal
+```powershell
+.\make.ps1 seal
 ```
 
 3. Commit `sealed-secrets.yaml` to Git.
 
 4. Apply sealed secrets:
 
-```bash
-make unseal
+```powershell
+.\make.ps1 unseal
 ```
 
 The Sealed Secrets controller automatically decrypts and creates the Kubernetes Secret in the cluster.
@@ -219,13 +212,13 @@ Backups run daily at 02:00 UTC and retain 7 days of history.
 
 ### Manual Backup
 
-```bash
-make backup
+```powershell
+.\make.ps1 backup
 ```
 
 ### Restore
 
-```bash
+```powershell
 kubectl exec -n moodle deploy/postgres -- pg_restore -U moodleuser -d moodle /backups/<backup-file>.sql.gz
 ```
 
@@ -252,26 +245,24 @@ PgBouncer and Redis are already deployed as separate scalable services.
 
 ## Maintenance
 
-```bash
-make apply        # Deploy / update base manifests
-make apply-dev    # Deploy dev environment
-make apply-prod   # Deploy production environment
-make delete       # Remove base manifests
-make backup       # Trigger immediate backup
-make status       # Show resource status
-make logs         # Tail Moodle logs
-make shell        # Exec into Moodle pod
-make validate     # Validate all manifests with kubeconform
-make diff         # Show diff before applying
-make test         # Smoke test deployed Moodle
-make seal         # Seal secrets for Git storage
-make unseal       # Apply sealed secrets to cluster
-make build-base   # Build base manifests
-make build-dev    # Build dev overlay
-make build-prod   # Build prod overlay
+```powershell
+.\make.ps1 apply        # Deploy / update base manifests
+.\make.ps1 apply-dev    # Deploy dev environment
+.\make.ps1 apply-prod   # Deploy production environment
+.\make.ps1 delete       # Remove base manifests
+.\make.ps1 backup       # Trigger immediate backup
+.\make.ps1 status       # Show resource status
+.\make.ps1 logs         # Tail Moodle logs
+.\make.ps1 shell        # Exec into Moodle pod
+.\make.ps1 validate     # Validate all manifests with kubeconform
+.\make.ps1 diff         # Show diff before applying
+.\make.ps1 test         # Smoke test deployed Moodle
+.\make.ps1 seal         # Seal secrets for Git storage
+.\make.ps1 unseal       # Apply sealed secrets to cluster
+.\make.ps1 build-base   # Build base manifests
+.\make.ps1 build-dev    # Build dev overlay
+.\make.ps1 build-prod   # Build prod overlay
 ```
-
-On Windows PowerShell, replace `make <target>` with `.\make.ps1 <target>`.
 
 ## Performance Tuning
 
@@ -283,14 +274,14 @@ On Windows PowerShell, replace `make <target>` with `.\make.ps1 <target>`.
 ## Upgrade Procedure
 
 1. Update image tags in the relevant deployment files (e.g., `moodle/deployment.yaml`, `postgres/deployment.yaml`).
-2. Run `make validate` to catch schema errors.
-3. Run `make diff` to review changes.
-4. Run `make apply` to deploy.
-5. Monitor with `make status` and `make logs`.
+2. Run `.\make.ps1 validate` to catch schema errors.
+3. Run `.\make.ps1 diff` to review changes.
+4. Run `.\make.ps1 apply` to deploy.
+5. Monitor with `.\make.ps1 status` and `.\make.ps1 logs`.
 
 For Moodle version upgrades, also run the CLI upgrade script:
 
-```bash
+```powershell
 kubectl exec -it -n moodle deploy/moodle -- php /var/www/html/admin/cli/upgrade.php
 ```
 
@@ -300,7 +291,7 @@ kubectl exec -it -n moodle deploy/moodle -- php /var/www/html/admin/cli/upgrade.
 
 Run the CLI installer or upgrade script:
 
-```bash
+```powershell
 kubectl exec -it -n moodle deploy/moodle -- php /var/www/html/admin/cli/install.php
 ```
 
@@ -308,7 +299,7 @@ kubectl exec -it -n moodle deploy/moodle -- php /var/www/html/admin/cli/install.
 
 Ensure the Redis StatefulSet is running:
 
-```bash
+```powershell
 kubectl get pods -n moodle -l app=redis
 ```
 
@@ -316,7 +307,7 @@ kubectl get pods -n moodle -l app=redis
 
 Check the backup CronJob logs:
 
-```bash
+```powershell
 kubectl logs -n moodle -l job-name=postgres-backup
 ```
 
@@ -324,7 +315,7 @@ kubectl logs -n moodle -l job-name=postgres-backup
 
 Verify the ingress controller namespace matches the NetworkPolicy selector:
 
-```bash
+```powershell
 kubectl get ns
 ```
 
