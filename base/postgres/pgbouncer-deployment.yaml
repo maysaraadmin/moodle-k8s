@@ -34,7 +34,7 @@ spec:
           capabilities:
             drop:
             - ALL
-        image: pgbouncer/pgbouncer:latest
+        image: pgbouncer/pgbouncer:1.22.0
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5432
@@ -52,8 +52,8 @@ spec:
             memory: "128Mi"
             cpu: "200m"
         livenessProbe:
-          exec:
-            command: ["pgbouncer", "-R", "-d", "moodle", "-U", "postgres", "-h", "localhost", "show", "stats"]
+          tcpSocket:
+            port: 5432
           initialDelaySeconds: 10
           periodSeconds: 10
         readinessProbe:
