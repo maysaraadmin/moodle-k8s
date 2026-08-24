@@ -17,13 +17,14 @@ spec:
           securityContext:
             runAsNonRoot: true
             runAsUser: 999
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-              - ALL
           restartPolicy: OnFailure
           containers:
           - name: backup
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                - ALL
             image: postgres:15
             imagePullPolicy: IfNotPresent
             command:

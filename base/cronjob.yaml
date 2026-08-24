@@ -12,16 +12,14 @@ spec:
       template:
         spec:
           terminationGracePeriodSeconds: 30
-          securityContext:
-            runAsNonRoot: true
-            runAsUser: 33
-            capabilities:
-              drop:
-              - ALL
           restartPolicy: OnFailure
           containers:
           - name: cron
-            image: moodlehq/moodle-php-apache:8.3-20250331
+            securityContext:
+              capabilities:
+                drop:
+                - ALL
+            image: moodlehq/moodle-php-apache:8.3
             imagePullPolicy: IfNotPresent
             envFrom:
             - configMapRef:
@@ -45,12 +43,20 @@ spec:
             command:
             - /bin/sh
             - -c
-            - php /var/www/html/admin/cli/cron.php
+            - |
+              if [ -f /var/www/html/admin/cli/cron.php ]; then
+                php /var/www/html/admin/cli/cron.php
+              else
+                echo "Moodle source code not found. Mount Moodle code to /var/www/html to enable cron."
+                exit 0
+              fi
             volumeMounts:
             - name: moodledata
               mountPath: /var/www/moodledata
             - name: tmp
               mountPath: /tmp
+            - name: php-conf
+              mountPath: /usr/local/etc/php/conf.d
             resources:
               requests:
                 memory: "128Mi"
@@ -63,4 +69,6 @@ spec:
             persistentVolumeClaim:
               claimName: moodledata-pvc
           - name: tmp
+            emptyDir: {}
+          - name: php-conf
             emptyDir: {}

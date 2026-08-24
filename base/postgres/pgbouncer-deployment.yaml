@@ -29,19 +29,37 @@ spec:
         securityContext:
           runAsNonRoot: true
           runAsUser: 70
-          readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
           capabilities:
             drop:
             - ALL
-        image: pgbouncer/pgbouncer:1.22.0
+        image: pgbouncer/pgbouncer:latest
         imagePullPolicy: IfNotPresent
+        env:
+        - name: DATABASES_USER
+          value: moodleuser
+        - name: DATABASES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: moodle-secrets
+              key: db-password
+        - name: DATABASES_HOST
+          value: postgres
+        - name: DATABASES_PORT
+          value: "5432"
+        - name: DATABASES_DBNAME
+          value: moodle
+        - name: PGBOUNCER_LISTEN_PORT
+          value: "5432"
+        - name: PGBOUNCER_POOL_MODE
+          value: transaction
+        - name: PGBOUNCER_MAX_CLIENT_CONN
+          value: "1000"
+        - name: PGBOUNCER_DEFAULT_POOL_SIZE
+          value: "20"
         ports:
         - containerPort: 5432
         volumeMounts:
-        - name: config
-          mountPath: /etc/pgbouncer
-          readOnly: true
         - name: log
           mountPath: /var/log/pgbouncer
         resources:
@@ -62,8 +80,5 @@ spec:
           initialDelaySeconds: 5
           periodSeconds: 5
       volumes:
-      - name: config
-        configMap:
-          name: pgbouncer-config
       - name: log
         emptyDir: {}

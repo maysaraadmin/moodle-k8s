@@ -43,14 +43,11 @@ spec:
       containers:
       - name: moodle
         securityContext:
-          runAsNonRoot: true
-          runAsUser: 33
-          readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
           capabilities:
             drop:
             - ALL
-        image: moodlehq/moodle-php-apache:8.3-20250331
+        image: moodlehq/moodle-php-apache:8.3
         imagePullPolicy: IfNotPresent
         envFrom:
         - configMapRef:
@@ -83,6 +80,8 @@ spec:
           mountPath: /var/www/moodledata
         - name: tmp
           mountPath: /tmp
+        - name: php-conf
+          mountPath: /usr/local/etc/php/conf.d
         resources:
           requests:
             memory: "512Mi"
@@ -91,14 +90,12 @@ spec:
             memory: "1Gi"
             cpu: "1000m"
         livenessProbe:
-          httpGet:
-            path: /login/index.php
+          tcpSocket:
             port: 80
           initialDelaySeconds: 60
           periodSeconds: 30
         readinessProbe:
-          httpGet:
-            path: /login/index.php
+          tcpSocket:
             port: 80
           initialDelaySeconds: 20
           periodSeconds: 10
@@ -107,4 +104,6 @@ spec:
         persistentVolumeClaim:
           claimName: moodledata-pvc
       - name: tmp
+        emptyDir: {}
+      - name: php-conf
         emptyDir: {}
