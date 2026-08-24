@@ -86,10 +86,17 @@ switch ($Command) {
         Write-Host "Running smoke test..."
         $ingressHost = (kubectl get ingress moodle-ingress -n $NAMESPACE -o jsonpath='{.spec.rules[0].host}' 2>$null)
         if (-not $ingressHost) {
-            $ingressHost = "moodle.localdomain"
-            Write-Host "Warning: could not detect ingress host, using default: $ingressHost"
+            Write-Host "Warning: no ingress found, testing via ClusterIP service instead"
+            $ingressHost = "moodle.moodle.svc.cluster.local"
+            $port = "80"
+            $protocol = "http"
+        } else {
+            $port = "443"
+            $protocol = "https"
         }
-        kubectl run curl-test --rm -it --restart=Never --image=curlimages/curl:latest -- curl -sf -o /dev/null -w "%{http_code}" "https://$ingressHost/login/index.php"
+        $testUrl = "${protocol}://${ingressHost}:${port}/login/index.php"
+        Write-Host "Testing URL: $testUrl"
+        kubectl run curl-test --rm --restart=Never --image=curlimages/curl:latest -- curl -sf -o /dev/null -w "%{http_code}" $testUrl
     }
     "seal" {
         if (-not (Test-Path "secrets.yaml")) {
