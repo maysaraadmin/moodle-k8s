@@ -1,0 +1,39 @@
+name: Validate Kubernetes Manifests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'v1.29.0'
+
+      - name: Install kubeconform
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz -o /tmp/kubeconform.tar.gz
+          tar -xzf /tmp/kubeconform.tar.gz -C /tmp
+          sudo mv /tmp/kubeconform /usr/local/bin/kubeconform
+          sudo chmod +x /usr/local/bin/kubeconform
+          kubeconform --version
+
+      - name: Validate base overlay
+        run: |
+          kubectl kustomize base | kubeconform -summary -ignore-missing-schemas -
+
+      - name: Validate dev overlay
+        run: |
+          kubectl kustomize overlays/dev | kubeconform -summary -ignore-missing-schemas -
+
+      - name: Validate prod overlay
+        run: |
+          kubectl kustomize overlays/prod | kubeconform -summary -ignore-missing-schemas -
