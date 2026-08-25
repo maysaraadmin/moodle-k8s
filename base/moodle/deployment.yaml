@@ -47,8 +47,8 @@ spec:
           capabilities:
             drop:
             - ALL
-        image: moodlehq/moodle-php-apache:8.3
-        imagePullPolicy: IfNotPresent
+        image: docker.io/library/moodle-php-apache:8.3-pgsql
+        imagePullPolicy: Never
         envFrom:
         - configMapRef:
             name: moodle-config
@@ -84,11 +84,11 @@ spec:
           mountPath: /usr/local/etc/php/conf.d
         resources:
           requests:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "256Mi"
+            cpu: "250m"
           limits:
-            memory: "1Gi"
-            cpu: "1000m"
+            memory: "256Mi"
+            cpu: "250m"
         livenessProbe:
           tcpSocket:
             port: 80
@@ -107,3 +107,4 @@ spec:
         emptyDir: {}
       - name: php-conf
         emptyDir: {}
+
