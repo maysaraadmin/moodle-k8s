@@ -1,6 +1,4 @@
-FROM moodlehq/moodle-php-apache:8.3
-
-COPY moodle/ /var/www/html/
+FROM moodlehq/moodle-php-apache:8.3.7
 
 RUN apt-get update && apt-get install -y \
     libpq-dev \

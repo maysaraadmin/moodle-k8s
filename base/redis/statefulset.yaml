@@ -17,21 +17,54 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9121"
     spec:
+      serviceAccountName: redis
+      automountServiceAccountToken: false
       securityContext:
         fsGroup: 999
+        runAsNonRoot: true
+        runAsUser: 999
+      initContainers:
+      - name: init-redis-config
+        image: busybox:1.36
+        command: ["sh", "-c"]
+        args:
+        - |
+          PASSWORD=$(cat /secrets/redis-password)
+          sed -i "s/\${REDIS_PASSWORD}/$PASSWORD/" /etc/redis/redis.conf
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65534
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: redis-config
+          mountPath: /etc/redis
+        - name: secrets
+          mountPath: /secrets
+          readOnly: true
       containers:
       - name: redis
         securityContext:
           runAsNonRoot: true
           runAsUser: 999
+          allowPrivilegeEscalation: false
           capabilities:
             drop:
             - ALL
+          readOnlyRootFilesystem: true
         image: redis:7-alpine
         imagePullPolicy: IfNotPresent
         command:
         - redis-server
         - /etc/redis/redis.conf
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: moodle-secrets
+              key: redis-password
         ports:
         - containerPort: 6379
           name: redis
@@ -41,12 +74,12 @@ spec:
         - name: redis-config
           mountPath: /etc/redis
         resources:
-           requests:
-             memory: "64Mi"
-             cpu: "50m"
-           limits:
-             memory: "128Mi"
-             cpu: "200m"
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
         livenessProbe:
           exec:
             command: ["redis-cli", "ping"]
@@ -61,6 +94,9 @@ spec:
       - name: redis-config
         configMap:
           name: redis-config
+      - name: secrets
+        secret:
+          secretName: moodle-secrets
   volumeClaimTemplates:
   - metadata:
       name: redis-data

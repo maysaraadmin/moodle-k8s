@@ -19,3 +19,25 @@ spec:
   selector:
     matchLabels:
       app: postgres
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pgbouncer-pdb
+  namespace: moodle
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: pgbouncer
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redis-pdb
+  namespace: moodle
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: redis

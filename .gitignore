@@ -3,6 +3,9 @@ secrets.yaml
 *.secret.yaml
 !sealed-secrets.yaml
 
+# Application source — build in CI or use base image
+moodle/
+
 # Kubernetes / CI
 *.kubeconfig
 .kube/

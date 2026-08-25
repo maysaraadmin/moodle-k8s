@@ -1,13 +1,22 @@
-# moodle-k8s build script for Windows
+# moodle-k8s build script for Windows PowerShell
 param(
-    [string]$Command = "help"
+    [string]$Command = "help",
+    [string]$Namespace = "moodle"
 )
 
 $ErrorActionPreference = "Stop"
-$NAMESPACE = "moodle"
 $KUSTOMIZE = "kubectl kustomize"
 $KUBECONFORM = "$env:USERPROFILE\.local\bin\kubeconform.exe"
 $KUBESEAL = "$env:USERPROFILE\.local\bin\kubeseal.exe"
+
+function Get-Namespace {
+    param([string]$Overlay)
+    switch ($Overlay) {
+        "dev" { return "moodle-dev" }
+        "prod" { return "moodle" }
+        default { return "moodle" }
+    }
+}
 
 switch ($Command) {
     "help" {
@@ -33,33 +42,49 @@ switch ($Command) {
         Write-Host "  build-prod   Build prod overlay"
     }
     "apply" {
+        $namespace = Get-Namespace "base"
         kubectl kustomize base | kubectl apply -f -
-        kubectl apply -f secrets.yaml
+        if (Test-Path "sealed-secrets.yaml") {
+            kubectl apply -f sealed-secrets.yaml -n $namespace
+        } elseif (Test-Path "secrets.yaml") {
+            kubectl apply -f secrets.yaml -n $namespace
+        }
     }
     "apply-dev" {
+        $namespace = Get-Namespace "dev"
         kubectl kustomize overlays\dev | kubectl apply -f -
-        kubectl apply -f secrets.yaml
+        if (Test-Path "sealed-secrets.yaml") {
+            kubectl apply -f sealed-secrets.yaml -n $namespace
+        } elseif (Test-Path "secrets.yaml") {
+            kubectl apply -f secrets.yaml -n $namespace
+        }
     }
     "apply-prod" {
+        $namespace = Get-Namespace "prod"
         kubectl kustomize overlays\prod | kubectl apply -f -
-        kubectl apply -f secrets.yaml
+        if (Test-Path "sealed-secrets.yaml") {
+            kubectl apply -f sealed-secrets.yaml -n $namespace
+        } elseif (Test-Path "secrets.yaml") {
+            kubectl apply -f secrets.yaml -n $namespace
+        }
     }
     "delete" {
+        $namespace = Get-Namespace "base"
         kubectl kustomize base | kubectl delete -f -
-        kubectl delete -f secrets.yaml --ignore-not-found=true
+        kubectl delete secret moodle-secrets -n $namespace --ignore-not-found=true
     }
     "backup" {
         $jobName = "postgres-backup-manual-$(Get-Date -Format 'yyyyMMddHHmmss')"
-        kubectl create job --from=cronjob/postgres-backup -n $NAMESPACE $jobName
+        kubectl create job --from=cronjob/postgres-backup -n $Namespace $jobName
     }
     "status" {
-        kubectl get all,pvc,pdb,cronjob -n $NAMESPACE
+        kubectl get all,pvc,pdb,cronjob,hpa,quota,limitrange -n $Namespace
     }
     "logs" {
-        kubectl logs -n $NAMESPACE -l app=moodle -f --tail=100
+        kubectl logs -n $Namespace -l app=moodle -f --tail=100
     }
     "shell" {
-        kubectl exec -it -n $NAMESPACE deploy/moodle -- /bin/bash
+        kubectl exec -it -n $Namespace deploy/moodle -- /bin/bash
     }
     "secrets" {
         if (-not (Test-Path "secrets.yaml")) {
@@ -82,12 +107,12 @@ switch ($Command) {
     }
     "test" {
         Write-Host "Waiting for Moodle to be ready..."
-        kubectl wait --for=condition=available --timeout=300s deploy/moodle -n $NAMESPACE
+        kubectl wait --for=condition=available --timeout=300s deploy/moodle -n $Namespace
         Write-Host "Running smoke test..."
-        $ingressHost = (kubectl get ingress moodle-ingress -n $NAMESPACE -o jsonpath='{.spec.rules[0].host}' 2>$null)
+        $ingressHost = (kubectl get ingress moodle-ingress -n $Namespace -o jsonpath='{.spec.rules[0].host}' 2>$null)
         if (-not $ingressHost) {
             Write-Host "Warning: no ingress found, testing via ClusterIP service instead"
-            $ingressHost = "moodle.moodle.svc.cluster.local"
+            $ingressHost = "moodle.$Namespace.svc.cluster.local"
             $port = "80"
             $protocol = "http"
         } else {

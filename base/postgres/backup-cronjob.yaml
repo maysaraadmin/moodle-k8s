@@ -9,15 +9,20 @@ metadata:
 spec:
   schedule: "0 2 * * *"
   successfulJobsHistoryLimit: 3
-  failedJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
       template:
         spec:
+          serviceAccountName: postgres
+          automountServiceAccountToken: false
           securityContext:
             runAsNonRoot: true
             runAsUser: 999
+          terminationGracePeriodSeconds: 30
           restartPolicy: OnFailure
+          backoffLimit: 3
+          activeDeadlineSeconds: 3600
           containers:
           - name: backup
             securityContext:
@@ -25,12 +30,14 @@ spec:
               capabilities:
                 drop:
                 - ALL
-            image: postgres:15
+              readOnlyRootFilesystem: true
+            image: postgres:15.8
             imagePullPolicy: IfNotPresent
             command:
             - /bin/sh
             - -c
             - |
+              set -euo pipefail
               pg_dump -U moodleuser -d moodle -h postgres | gzip > /backups/moodle-$(date +%Y%m%d-%H%M%S).sql.gz
               find /backups -type f -name "*.sql.gz" -mtime +7 -delete
             env:

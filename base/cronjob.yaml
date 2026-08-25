@@ -4,23 +4,32 @@ metadata:
   name: moodle-cron
   namespace: moodle
 spec:
-  schedule: "*/1 * * * *"   # every minute
+  schedule: "*/1 * * * *"
   successfulJobsHistoryLimit: 3
-  failedJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
       template:
         spec:
+          serviceAccountName: moodle
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 33
+            runAsGroup: 33
           terminationGracePeriodSeconds: 30
           restartPolicy: OnFailure
+          backoffLimit: 3
           containers:
           - name: cron
             securityContext:
+              allowPrivilegeEscalation: false
               capabilities:
                 drop:
                 - ALL
-            image: docker.io/library/moodle-php-apache:8.3-pgsql
-            imagePullPolicy: Never
+              readOnlyRootFilesystem: true
+            image: docker.io/library/moodle-php-apache:8.3.7
+            imagePullPolicy: IfNotPresent
             envFrom:
             - configMapRef:
                 name: moodle-config
@@ -44,6 +53,7 @@ spec:
             - /bin/sh
             - -c
             - |
+              set -euo pipefail
               if [ -f /var/www/html/admin/cli/cron.php ]; then
                 php /var/www/html/admin/cli/cron.php
               else
@@ -69,6 +79,7 @@ spec:
             persistentVolumeClaim:
               claimName: moodledata-pvc
           - name: tmp
-            emptyDir: {}
+            emptyDir:
+              medium: Memory
           - name: php-conf
             emptyDir: {}

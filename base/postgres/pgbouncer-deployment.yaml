@@ -21,9 +21,13 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9127"
     spec:
+      serviceAccountName: pgbouncer
+      automountServiceAccountToken: false
       terminationGracePeriodSeconds: 30
       securityContext:
         fsGroup: 70
+        runAsNonRoot: true
+        runAsUser: 70
       initContainers:
       - name: init-pgbouncer
         image: busybox:1.36
@@ -33,6 +37,13 @@ spec:
           PASSWORD=$(cat /secrets/db-password)
           HASH=$(printf '%s' "$PASSWORD" | md5sum | cut -d' ' -f1)
           printf '"%s" "%s"\n' "moodleuser" "$HASH" > /pgbouncer/userlist.txt
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65534
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
         volumeMounts:
         - name: pgbouncer-data
           mountPath: /pgbouncer
@@ -48,32 +59,14 @@ spec:
           capabilities:
             drop:
             - ALL
-        image: pgbouncer/pgbouncer:latest
+        image: pgbouncer/pgbouncer:1.22.0
         imagePullPolicy: IfNotPresent
         env:
-        - name: DATABASES_HOST
-          value: postgres
-        - name: DATABASES_PORT
-          value: "5432"
-        - name: DATABASES_DBNAME
-          value: moodle
-        - name: DATABASES_USER
-          value: moodleuser
         - name: DATABASES_PASSWORD
           valueFrom:
             secretKeyRef:
               name: moodle-secrets
               key: db-password
-        - name: PGBOUNCER_LISTEN_PORT
-          value: "5432"
-        - name: PGBOUNCER_POOL_MODE
-          value: transaction
-        - name: PGBOUNCER_MAX_CLIENT_CONN
-          value: "1000"
-        - name: PGBOUNCER_DEFAULT_POOL_SIZE
-          value: "20"
-        - name: PGBOUNCER_AUTH_FILE
-          value: /etc/pgbouncer/userlist.txt
         ports:
         - containerPort: 5432
         volumeMounts:
@@ -81,6 +74,9 @@ spec:
           mountPath: /var/log/pgbouncer
         - name: pgbouncer-data
           mountPath: /etc/pgbouncer
+        - name: pgbouncer-config
+          mountPath: /etc/pgbouncer/pgbouncer.ini
+          subPath: pgbouncer.ini
         resources:
           requests:
             memory: "64Mi"
@@ -103,6 +99,9 @@ spec:
         emptyDir: {}
       - name: pgbouncer-data
         emptyDir: {}
+      - name: pgbouncer-config
+        configMap:
+          name: pgbouncer-config
       - name: secrets
         secret:
           secretName: moodle-secrets

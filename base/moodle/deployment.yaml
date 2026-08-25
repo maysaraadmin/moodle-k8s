@@ -21,8 +21,13 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "80"
     spec:
+      serviceAccountName: moodle
+      automountServiceAccountToken: false
       terminationGracePeriodSeconds: 30
       securityContext:
+        runAsNonRoot: true
+        runAsUser: 33
+        runAsGroup: 33
         fsGroup: 33
       topologySpreadConstraints:
       - maxSkew: 1
@@ -47,8 +52,9 @@ spec:
           capabilities:
             drop:
             - ALL
-        image: docker.io/library/moodle-php-apache:8.3-pgsql
-        imagePullPolicy: Never
+          readOnlyRootFilesystem: true
+        image: docker.io/library/moodle-php-apache:8.3.7
+        imagePullPolicy: IfNotPresent
         envFrom:
         - configMapRef:
             name: moodle-config
@@ -87,8 +93,8 @@ spec:
             memory: "256Mi"
             cpu: "250m"
           limits:
-            memory: "256Mi"
-            cpu: "250m"
+            memory: "512Mi"
+            cpu: "500m"
         livenessProbe:
           tcpSocket:
             port: 80
@@ -104,7 +110,7 @@ spec:
         persistentVolumeClaim:
           claimName: moodledata-pvc
       - name: tmp
-        emptyDir: {}
+        emptyDir:
+          medium: Memory
       - name: php-conf
         emptyDir: {}
-

@@ -63,3 +63,10 @@ patches:
     - op: replace
       path: /spec/rules/0/host
       value: moodle-dev.example.com
+- target:
+    kind: HorizontalPodAutoscaler
+    name: moodle-hpa
+  patch: |-
+    - op: replace
+      path: /spec/minReplicas
+      value: 1

@@ -1,5 +1,8 @@
 resources:
   - namespace.yaml
+  - rbac/serviceaccount.yaml
+  - resource-quota.yaml
+  - limit-range.yaml
   - configmap.yaml
   - pvc/moodledata-pvc.yaml
   - pvc/postgres-pvc.yaml
@@ -17,6 +20,7 @@ resources:
   - redis/statefulset.yaml
   - redis/service.yaml
   - pdb/pdb.yaml
+  - hpa/moodle-hpa.yaml
   - cronjob.yaml
   - network-policies.yaml
   - ingress.yaml

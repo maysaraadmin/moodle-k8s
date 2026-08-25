@@ -5,33 +5,35 @@ Production-grade Kubernetes manifests for deploying Moodle LMS on a Kubernetes c
 ## Architecture
 
 ```
-                     ┌──────────────┐
-                     │   Ingress    │
-                     │   (nginx)    │
-                     └──────┬───────┘
-                            │
-                     ┌──────▼───────┐
-                     │    Moodle    │
-                     │  (PHP/Apache)│
-                     └──────┬───────┘
-                            │
-               ┌────────────┼────────────┐
-               │            │            │
-        ┌──────▼──────┐ ┌──▼─────┐ ┌─────▼──────┐
-        │  moodledata │ │  cron  │ │  postgres  │
-        │    (PVC)    │ │ (Cron) │ │   (PVC)    │
-        └─────────────┘ └────────┘ └─────┬──────┘
-                                          │
-                                   ┌──────▼──────┐
-                                   │  PgBouncer  │
-                                   │  (pooling)  │
-                                   └─────────────┘
-                                          │
-                                   ┌──────▼──────┐
-                                   │    Redis    │
-                                   │   (cache)   │
-                                   └─────────────┘
+                      ┌──────────────┐
+                      │   Ingress    │
+                      │   (nginx)    │
+                      └──────┬───────┘
+                             │
+                      ┌──────▼───────┐
+                      │    Moodle    │
+                      │  (PHP/Apache)│
+                      └──────┬───────┘
+                             │
+                ┌────────────┼────────────┐
+                │            │            │
+         ┌──────▼──────┐ ┌──▼─────┐ ┌─────▼──────┐
+         │  moodledata │ │  cron  │ │  postgres  │
+         │    (PVC)    │ │ (Cron) │ │   (PVC)    │
+         └─────────────┘ └────────┘ └─────┬──────┘
+                                           │
+                                    ┌──────▼──────┐
+                                    │  PgBouncer  │
+                                    │  (pooling)  │
+                                    └─────────────┘
+                                           │
+                                    ┌──────▼──────┐
+                                    │    Redis    │
+                                    │   (cache)   │
+                                    └─────────────┘
 ```
+
+Moodle, PgBouncer, and Redis run as non-root with dropped capabilities and read-only root filesystems. Pod Security Admission is enforced at `restricted`.
 
 ## Prerequisites
 
@@ -43,6 +45,7 @@ Production-grade Kubernetes manifests for deploying Moodle LMS on a Kubernetes c
 - `kubeconform` for validation (optional but recommended)
 - `kubeseal` for secret management (optional but recommended)
 - `pre-commit` for local Git hooks (optional but recommended)
+- Metrics Server (for HPA, optional but recommended)
 
 ## Continuous Integration
 
@@ -82,7 +85,14 @@ This will run `kubeconform` on all YAML files before each commit.
 
 4. Complete Moodle setup:
 
-Visit `https://moodle.localdomain` (update `base/ingress.yaml` with your domain first). Auto-install is disabled by default; run the Moodle CLI installer manually or set `MOODLE_DOCKER_AUTOINSTALL=1` temporarily.
+Visit `https://moodle.localdomain` (or configure your domain via overlays). Auto-install is disabled by default; run the Moodle CLI installer manually or set `MOODLE_DOCKER_AUTOINSTALL=1` temporarily.
+
+### Configuring Domains
+
+Update domains in the overlay kustomization files rather than editing `base/ingress.yaml` directly:
+
+- **Dev**: `overlays/dev/kustomization.yaml`
+- **Prod**: `overlays/prod/kustomization.yaml`
 
 ## Directory Structure
 
@@ -95,6 +105,12 @@ Visit `https://moodle.localdomain` (update `base/ingress.yaml` with your domain 
 │   ├── cronjob.yaml
 │   ├── ingress.yaml
 │   ├── network-policies.yaml
+│   ├── rbac/
+│   │   └── serviceaccount.yaml
+│   ├── hpa/
+│   │   └── moodle-hpa.yaml
+│   ├── resource-quota.yaml
+│   ├── limit-range.yaml
 │   ├── moodle/
 │   │   ├── deployment.yaml
 │   │   └── service.yaml
@@ -124,6 +140,7 @@ Visit `https://moodle.localdomain` (update `base/ingress.yaml` with your domain 
 ├── secrets.yaml              # Sensitive values (gitignored)
 ├── secrets.yaml.example      # Secret template
 ├── sealed-secrets.yaml       # Encrypted secrets for Git (optional)
+├── Makefile                  # Cross-platform build script
 ├── make.ps1                  # Deployment script (Windows PowerShell)
 ├── .pre-commit-config.yaml   # Pre-commit hooks for validation
 ├── .gitignore
@@ -138,12 +155,18 @@ Visit `https://moodle.localdomain` (update `base/ingress.yaml` with your domain 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Run `.\make.ps1 validate` to ensure manifests are valid
+4. Run `make validate` or `.\make.ps1 validate` to ensure manifests are valid
 5. Run `pre-commit run --all-files` to run local validation hooks
 6. Commit and push your branch
 7. Open a Pull Request
 
 All PRs are automatically validated by GitHub Actions.
+
+## Notes
+
+- The `moodle/` directory is no longer tracked in Git. The base Docker image `moodlehq/moodle-php-apache:8.3.7` contains the Moodle source code. If you need custom plugins or themes, build a custom image in CI.
+- The HPA is configured with `minReplicas: 1` by default. To scale beyond 1 replica, you must use `ReadWriteMany` storage for `moodledata-pvc`.
+- Use `-Namespace` parameter with `make.ps1` for non-default namespaces: `.\make.ps1 logs -Namespace moodle-dev`
 
 ## Configuration
 
@@ -164,13 +187,16 @@ All PRs are automatically validated by GitHub Actions.
 | `MOODLE_DOCKER_REDIS_HOST` | Redis hostname | `redis` |
 | `MOODLE_DOCKER_REDIS_PORT` | Redis port | `6379` |
 | `MOODLE_DOCKER_REDIS_DB` | Redis database index | `0` |
+| `MOODLE_DOCKER_REDIS_PASSWORD` | Redis password (empty = no auth) | `""` |
 | `TZ` | Timezone | `UTC` |
 
 ### Ingress
 
-Update `base/ingress.yaml`:
-- Change `moodle.localdomain` to your actual domain
-- Ensure your ingress controller namespace matches the NetworkPolicy selector in `base/network-policies.yaml` (default: `ingress-nginx`)
+Update domains in the overlay kustomization files:
+- `overlays/dev/kustomization.yaml`
+- `overlays/prod/kustomization.yaml`
+
+Ensure your ingress controller namespace matches the NetworkPolicy selector in `base/network-policies.yaml` (default: `ingress-nginx`).
 
 ### Storage
 
@@ -257,14 +283,18 @@ kubectl exec -n moodle deploy/postgres -- pg_restore -U moodleuser -d moodle /ba
 ## Security
 
 - Pods run as non-root users with dropped capabilities
-- `readOnlyRootFilesystem` on all containers where possible
+- `readOnlyRootFilesystem` on all application containers
 - `allowPrivilegeEscalation: false` on all containers
 - Network policies restrict traffic to required paths only
-- Pod Security Standards enforced at `baseline`
+- Pod Security Standards enforced at `restricted`
 - TLS termination via cert-manager / Let's Encrypt
+- Redis requires password authentication and binds to loopback
 - Secrets separated from ConfigMaps
 - Support for Sealed Secrets for Git-safe secret storage
 - Topology spread constraints reduce blast radius
+- ServiceAccounts with automount disabled
+- ResourceQuota and LimitRange enforce namespace constraints
+- PgBouncer image pinned to specific version
 
 ## Horizontal Scaling
 
@@ -272,10 +302,13 @@ To scale Moodle beyond 1 replica:
 1. Replace `moodledata-pvc` with a `ReadWriteMany` capable storage (NFS, CephFS, or MinIO via s3fs)
 2. Update the PVC `accessModes` to `ReadWriteMany`
 3. Increase `replicas` in the dev or prod overlay
+4. The HPA will automatically scale pods based on CPU and memory utilization
 
-PgBouncer and Redis are already deployed as separate scalable services.
+PgBouncer and Redis are already deployed as separate scalable services. For higher load, increase their replicas in the overlay.
 
 ## Maintenance
+
+### PowerShell (Windows)
 
 ```powershell
 .\make.ps1 apply        # Deploy / update base manifests
@@ -286,7 +319,7 @@ PgBouncer and Redis are already deployed as separate scalable services.
 .\make.ps1 status       # Show resource status
 .\make.ps1 logs         # Tail Moodle logs
 .\make.ps1 shell        # Exec into Moodle pod
-.\make.ps1 validate     # Validate all manifests with kubeconform
+.\make.ps1 validate     # Validate all manifests
 .\make.ps1 diff         # Show diff before applying
 .\make.ps1 test         # Smoke test deployed Moodle
 .\make.ps1 seal         # Seal secrets for Git storage
@@ -296,25 +329,54 @@ PgBouncer and Redis are already deployed as separate scalable services.
 .\make.ps1 build-prod   # Build prod overlay
 ```
 
+### Makefile (Linux / macOS / Windows with make)
+
+```bash
+make apply        # Deploy / update base manifests
+make apply-dev    # Deploy dev environment
+make apply-prod   # Deploy production environment
+make delete       # Remove base manifests
+make backup       # Trigger immediate backup
+make status       # Show resource status
+make logs         # Tail Moodle logs
+make shell        # Exec into Moodle pod
+make validate     # Validate all manifests
+make diff         # Show diff before applying
+make test         # Smoke test deployed Moodle
+make seal         # Seal secrets for Git storage
+make unseal       # Apply sealed secrets to cluster
+make build-base   # Build base manifests
+make build-dev    # Build dev overlay
+make build-prod   # Build prod overlay
+```
+
 ## Performance Tuning
 
-- **Redis**: Moodle is configured to use Redis for session caching and application cache, significantly improving page load times.
+- **Redis**: Moodle is configured to use Redis for session caching and application cache, significantly improving page load times. Redis uses `volatile-lru` eviction policy to preserve active sessions.
 - **PgBouncer**: PostgreSQL connections are pooled through PgBouncer, reducing connection overhead and preventing `max_connections` exhaustion.
-- **Resource Limits**: All containers have explicit requests and limits for predictable scheduling.
+- **HPA**: Moodle deployment has a HorizontalPodAutoscaler that scales between 2-10 replicas based on CPU (70%) and memory (80%) utilization.
+- **Resource Limits**: All containers have explicit requests and limits for predictable scheduling. Moodle can burst to 512Mi / 500m under load.
 - **Topology Spread**: Pods are spread across nodes to improve availability.
+- **In-memory tmpfs**: `/tmp` uses `emptyDir` with `medium: Memory` for faster temporary file operations.
 
 ## Upgrade Procedure
 
 1. Update image tags in the relevant deployment files (e.g., `moodle/deployment.yaml`, `postgres/deployment.yaml`).
-2. Run `.\make.ps1 validate` to catch schema errors.
-3. Run `.\make.ps1 diff` to review changes.
-4. Run `.\make.ps1 apply` to deploy.
-5. Monitor with `.\make.ps1 status` and `.\make.ps1 logs`.
+2. Run `make validate` to catch schema errors.
+3. Run `make diff` to review changes.
+4. Run `make apply` to deploy.
+5. Monitor with `make status` and `make logs`.
 
 For Moodle version upgrades, also run the CLI upgrade script:
 
 ```powershell
 kubectl exec -it -n moodle deploy/moodle -- php /var/www/html/admin/cli/upgrade.php
+```
+
+For major version upgrades, test in the dev overlay first:
+
+```powershell
+.\make.ps1 apply-dev
 ```
 
 ## Troubleshooting
@@ -335,6 +397,12 @@ Ensure the Redis StatefulSet is running:
 kubectl get pods -n moodle -l app=redis
 ```
 
+Check Redis authentication:
+
+```powershell
+kubectl logs -n moodle -l app=redis
+```
+
 ### PostgreSQL backup failing
 
 Check the backup CronJob logs:
@@ -349,6 +417,19 @@ Verify the ingress controller namespace matches the NetworkPolicy selector:
 
 ```powershell
 kubectl get ns
+```
+
+### Pods fail to schedule with imagePullPolicy: Never
+
+The Moodle image is now pulled from Docker Hub by default (`IfNotPresent`). If you built a custom image, push it to a registry accessible by your cluster.
+
+### HPA not scaling
+
+Ensure Metrics Server is installed in your cluster:
+
+```powershell
+kubectl top nodes
+kubectl top pods -n moodle
 ```
 
 ## License
