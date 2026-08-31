@@ -1,4 +1,4 @@
-FROM moodlehq/moodle-php-apache:8.3.7
+FROM moodlehq/moodle-php-apache:8.4
 
 RUN apt-get update && apt-get install -y \
     libpq-dev \
